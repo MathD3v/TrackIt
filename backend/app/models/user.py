@@ -1,6 +1,8 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
+from sqlalchemy.sql import func
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -27,4 +29,46 @@ class User(db.Model):
             'email': self.email,
             'created_at': self.created_at.isoformat()
         }
+
+    @classmethod
+    def generate_token(cls, user_id, expires_in=3600):
+        """Gera um novo token para redefinição de senha"""
+        token = secrets.token_urlsafe(64)
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        
+        # Invalida tokens anteriores para este usuário
+        cls.query.filter_by(user_id=user_id, used=False).update({'used': True})
+        
+        # Cria um novo token
+        reset = cls(
+            user_id=user_id,
+            token=token,
+            expires_at=expires_at
+        )
+        db.session.add(reset)
+        db.session.commit()
+        
+        return reset
     
+    @classmethod
+    def verify_token(cls, token):
+        """Verifica se o token é válido e retorna o objeto de redefinição de senha"""
+        reset = cls.query.filter_by(
+            token=token,
+            used=False
+        ).first()
+        
+        if not reset:
+            return None
+            
+        if reset.expires_at < datetime.utcnow():
+            reset.used = True
+            db.session.commit()
+            return None
+            
+        return reset
+        
+    def use_token(self):
+        """Marca o token como usado"""
+        self.used = True
+        db.session.commit()
