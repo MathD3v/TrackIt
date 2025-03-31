@@ -55,3 +55,5 @@ Certifique-se de ter o Python instalado e um ambiente virtual configurado.
 ### Arquivo `run.py`
 
 O `run.py` é responsável por iniciar o servidor da aplicação e garantir que o banco de dados seja inicializado corretamente.
+
+### Documento sobre api na pasta document_api
